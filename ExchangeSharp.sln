@@ -1,11 +1,13 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
-VisualStudioVersion = 15.0.26730.12
+VisualStudioVersion = 15.0.27130.2010
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExchangeSharpConsole", "ExchangeSharpConsole.csproj", "{B2544FEB-77E4-4056-90A5-C8CD09D203C5}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExchangeSharp", "ExchangeSharp\ExchangeSharp.csproj", "{FDDED71D-96A2-4914-BF48-796A63263559}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CoinBoard", "CoinBoard\CoinBoard.csproj", "{E34B7A3B-68A5-4CB9-9279-86F10AC3F5E7}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +23,10 @@ Global
 		{FDDED71D-96A2-4914-BF48-796A63263559}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FDDED71D-96A2-4914-BF48-796A63263559}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FDDED71D-96A2-4914-BF48-796A63263559}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E34B7A3B-68A5-4CB9-9279-86F10AC3F5E7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E34B7A3B-68A5-4CB9-9279-86F10AC3F5E7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E34B7A3B-68A5-4CB9-9279-86F10AC3F5E7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E34B7A3B-68A5-4CB9-9279-86F10AC3F5E7}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
