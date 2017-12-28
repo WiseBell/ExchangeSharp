@@ -42,11 +42,15 @@ namespace ExchangeSharp
 
         private ExchangeOrderResult ParseOrder(JToken result)
         {
+            decimal executedValue = (decimal)result["executed_value"];
+            decimal amountFilled = (decimal)result["filled_size"];
+            decimal amount = result["size"] == null ? amountFilled : (decimal)result["size"];
+            decimal averagePrice = (executedValue <= 0m ? 0m : executedValue / amountFilled);
             ExchangeOrderResult order = new ExchangeOrderResult
             {
-                Amount = (decimal)result["size"],
-                AmountFilled = (decimal)result["filled_size"],
-                AveragePrice = (decimal)result["executed_value"],
+                Amount = amount,
+                AmountFilled = amountFilled,
+                AveragePrice = averagePrice,
                 IsBuy = ((string)result["side"]) == "buy",
                 OrderDate = (DateTime)result["created_at"],
                 Symbol = (string)result["product_id"],
@@ -130,28 +134,16 @@ namespace ExchangeSharp
             cursorBefore = response.Headers["cb-before"];
         }
 
-        /// <summary>
-        /// Constructor
-        /// </summary>
         public ExchangeGdaxAPI()
         {
             RequestContentType = "application/json";
         }
 
-        /// <summary>
-        /// Normalize GDAX symbol / product id
-        /// </summary>
-        /// <param name="symbol">Symbol / product id</param>
-        /// <returns>Normalized symbol / product id</returns>
         public override string NormalizeSymbol(string symbol)
         {
             return symbol?.Replace('_', '-').ToUpperInvariant();
         }
 
-        /// <summary>
-        /// Load API keys from an encrypted file - keys will stay encrypted in memory
-        /// </summary>
-        /// <param name="encryptedFile">Encrypted file to load keys from</param>
         public override void LoadAPIKeys(string encryptedFile)
         {
             SecureString[] strings = CryptoUtility.LoadProtectedStringsFromFile(encryptedFile);
@@ -312,29 +304,36 @@ namespace ExchangeSharp
             return candles;
         }
 
-        /// <summary>
-        /// Get amounts available to trade, symbol / amount dictionary
-        /// </summary>
-        /// <returns>Symbol / amount dictionary</returns>
+        public override Dictionary<string, decimal> GetAmounts()
+        {
+            Dictionary<string, decimal> amounts = new Dictionary<string, decimal>();
+            JArray array = MakeJsonRequest<JArray>("/accounts", null, GetTimestampPayload());
+            foreach (JToken token in array)
+            {
+                decimal amount = (decimal)token["balance"];
+                if (amount > 0m)
+                {
+                    amounts[(string)token["currency"]] = amount;
+                }
+            }
+            return amounts;
+        }
+
         public override Dictionary<string, decimal> GetAmountsAvailableToTrade()
         {
             Dictionary<string, decimal> amounts = new Dictionary<string, decimal>();
             JArray array = MakeJsonRequest<JArray>("/accounts", null, GetTimestampPayload());
             foreach (JToken token in array)
             {
-                amounts[(string)token["currency"]] = (decimal)token["available"];
+                decimal amount = (decimal)token["available"];
+                if (amount > 0m)
+                {
+                    amounts[(string)token["currency"]] = amount;
+                }
             }
             return amounts;
         }
 
-        /// <summary>
-        /// Place a limit order
-        /// </summary>
-        /// <param name="symbol">Symbol</param>
-        /// <param name="amount">Amount</param>
-        /// <param name="price">Price</param>
-        /// <param name="buy">True to buy, false to sell</param>
-        /// <returns>Result</returns>
         public override ExchangeOrderResult PlaceOrder(string symbol, decimal amount, decimal price, bool buy)
         {
             symbol = NormalizeSymbol(symbol);
@@ -352,36 +351,32 @@ namespace ExchangeSharp
             return ParseOrder(result);
         }
 
-        /// <summary>
-        /// Get order details
-        /// </summary>
-        /// <param name="orderId">Order id to get details for</param>
-        /// <returns>Order details</returns>
         public override ExchangeOrderResult GetOrderDetails(string orderId)
         {
             JObject obj = MakeJsonRequest<JObject>("/orders/" + orderId, null, GetTimestampPayload(), "GET");
             return ParseOrder(obj);
         }
 
-        /// <summary>
-        /// Get the details of all open orders
-        /// </summary>
-        /// <param name="symbol">Symbol to get open orders for or null for all</param>
-        /// <returns>All open order details</returns>
         public override IEnumerable<ExchangeOrderResult> GetOpenOrderDetails(string symbol = null)
         {
             symbol = NormalizeSymbol(symbol);
-            JArray array = MakeJsonRequest<JArray>("orders?type=all" + (string.IsNullOrWhiteSpace(symbol) ? string.Empty : "&product_id=" + symbol), null, GetTimestampPayload());
+            JArray array = MakeJsonRequest<JArray>("orders?status=all" + (string.IsNullOrWhiteSpace(symbol) ? string.Empty : "&product_id=" + symbol), null, GetTimestampPayload());
             foreach (JToken token in array)
             {
                 yield return ParseOrder(token);
             }
         }
 
-        /// <summary>
-        /// Cancel an order, an exception is thrown if error
-        /// </summary>
-        /// <param name="orderId">Order id of the order to cancel</param>
+        public override IEnumerable<ExchangeOrderResult> GetCompletedOrderDetails(string symbol = null)
+        {
+            symbol = NormalizeSymbol(symbol);
+            JArray array = MakeJsonRequest<JArray>("orders?status=done" + (string.IsNullOrWhiteSpace(symbol) ? string.Empty : "&product_id=" + symbol), null, GetTimestampPayload());
+            foreach (JToken token in array)
+            {
+                yield return ParseOrder(token);
+            }
+        }
+
         public override void CancelOrder(string orderId)
         {
             MakeJsonRequest<JArray>("orders/" + orderId, null, GetTimestampPayload(), "DELETE");

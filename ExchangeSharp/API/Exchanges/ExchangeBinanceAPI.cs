@@ -320,6 +320,18 @@ namespace ExchangeSharp
             }
         }
 
+        public override Dictionary<string, decimal> GetAmounts()
+        {
+            JToken token = MakeJsonRequest<JToken>("/account", BaseUrlPrivate, GetNoncePayload());
+            CheckError(token);
+            Dictionary<string, decimal> balances = new Dictionary<string, decimal>();
+            foreach (JToken balance in token["balances"])
+            {
+                balances[(string)balance["asset"]] = (decimal)balance["free"] + (decimal)balance["locked"];
+            }
+            return balances;
+        }
+
         public override Dictionary<string, decimal> GetAmountsAvailableToTrade()
         {
             JToken token = MakeJsonRequest<JToken>("/account", BaseUrlPrivate, GetNoncePayload());
@@ -376,6 +388,22 @@ namespace ExchangeSharp
             Dictionary<string, object> payload = GetNoncePayload();
             payload["symbol"] = NormalizeSymbol(symbol);
             JToken token = MakeJsonRequest<JToken>("/openOrders", BaseUrlPrivate, payload);
+            CheckError(token);
+            foreach (JToken order in token)
+            {
+                yield return ParseOrder(order);
+            }
+        }
+
+        public override IEnumerable<ExchangeOrderResult> GetCompletedOrderDetails(string symbol = null)
+        {
+            if (string.IsNullOrWhiteSpace(symbol))
+            {
+                throw new InvalidOperationException("Binance order details request requires the symbol parameter. I am sorry for this, I cannot control their API implementation which is really bad here.");
+            }
+            Dictionary<string, object> payload = GetNoncePayload();
+            payload["symbol"] = NormalizeSymbol(symbol);
+            JToken token = MakeJsonRequest<JToken>("/allOrders", BaseUrlPrivate, payload);
             CheckError(token);
             foreach (JToken order in token)
             {

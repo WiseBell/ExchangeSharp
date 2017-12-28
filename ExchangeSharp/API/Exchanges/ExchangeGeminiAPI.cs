@@ -198,6 +198,23 @@ namespace ExchangeSharp
             }
         }
 
+        public override Dictionary<string, decimal> GetAmounts()
+        {
+            Dictionary<string, decimal> lookup = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
+            JArray obj = MakeJsonRequest<Newtonsoft.Json.Linq.JArray>("/balances", null, GetNoncePayload());
+            CheckError(obj);
+            var q = from JToken token in obj
+                    select new { Currency = token["currency"].Value<string>(), Available = token["amount"].Value<decimal>() };
+            foreach (var kv in q)
+            {
+                if (kv.Available > 0m)
+                {
+                    lookup[kv.Currency] = kv.Available;
+                }
+            }
+            return lookup;
+        }
+
         public override Dictionary<string, decimal> GetAmountsAvailableToTrade()
         {
             Dictionary<string, decimal> lookup = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
@@ -207,7 +224,10 @@ namespace ExchangeSharp
                     select new { Currency = token["currency"].Value<string>(), Available = token["available"].Value<decimal>() };
             foreach (var kv in q)
             {
-                lookup[kv.Currency] = kv.Available;
+                if (kv.Available > 0m)
+                {
+                    lookup[kv.Currency] = kv.Available;
+                }
             }
             return lookup;
         }
@@ -242,11 +262,6 @@ namespace ExchangeSharp
             return ParseOrder(result);
         }
 
-        /// <summary>
-        /// Get the details of all open orders
-        /// </summary>
-        /// <param name="symbol">Symbol to get open orders for or null for all</param>
-        /// <returns>All open order details</returns>
         public override IEnumerable<ExchangeOrderResult> GetOpenOrderDetails(string symbol = null)
         {
             symbol = NormalizeSymbol(symbol);

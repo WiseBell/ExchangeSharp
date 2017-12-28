@@ -212,10 +212,22 @@ namespace ExchangeSharp
         public Task<IEnumerable<MarketCandle>> GetCandlesAsync(string symbol, int periodSeconds, DateTime? startDate = null, DateTime? endDate = null) => Task.Factory.StartNew(() => GetCandles(symbol, periodSeconds, startDate, endDate));
 
         /// <summary>
+        /// Get total amounts, symbol / amount dictionary
+        /// </summary>
+        /// <returns>Dictionary of symbols and amounts</returns>
+        public virtual Dictionary<string, decimal> GetAmounts() { throw new NotSupportedException(); }
+
+        /// <summary>
+        /// ASYNC - Get total amounts, symbol / amount dictionary
+        /// </summary>
+        /// <returns>Dictionary of symbols and amounts</returns>
+        public Task<Dictionary<string, decimal>> GetAmountsAsync() => Task.Factory.StartNew(() => GetAmounts());
+
+        /// <summary>
         /// Get amounts available to trade, symbol / amount dictionary
         /// </summary>
         /// <returns>Symbol / amount dictionary</returns>
-        public virtual Dictionary<string, decimal> GetAmountsAvailableToTrade() { throw new NotImplementedException(); }
+        public virtual Dictionary<string, decimal> GetAmountsAvailableToTrade() { return GetAmounts(); }
 
         /// <summary>
         /// ASYNC - Get amounts available to trade, symbol / amount dictionary
@@ -269,7 +281,21 @@ namespace ExchangeSharp
         /// </summary>
         /// <param name="symbol">Symbol to get open orders for or null for all</param>
         /// <returns>All open order details</returns>
-        public Task<IEnumerable<ExchangeOrderResult>> GetOpenOrderDetailsAsync(string symbol = null) => Task.Factory.StartNew(() => GetOpenOrderDetails());
+        public Task<IEnumerable<ExchangeOrderResult>> GetOpenOrderDetailsAsync(string symbol = null) => Task.Factory.StartNew(() => GetOpenOrderDetails(symbol));
+
+        /// <summary>
+        /// Get the details of all completed orders
+        /// </summary>
+        /// <param name="symbol">Symbol to get completed orders for or null for all</param>
+        /// <returns>All completed order details for the specified symbol, or all if null symbol</returns>
+        public virtual IEnumerable<ExchangeOrderResult> GetCompletedOrderDetails(string symbol = null) { throw new NotImplementedException(); }
+
+        /// <summary>
+        /// ASYNC - Get the details of all completed orders
+        /// </summary>
+        /// <param name="symbol">Symbol to get completed orders for or null for all</param>
+        /// <returns>All completed order details for the specified symbol, or all if null symbol</returns>
+        public Task<IEnumerable<ExchangeOrderResult>> GetCompletedOrderDetailsAsync(string symbol = null) => Task.Factory.StartNew(() => GetCompletedOrderDetails(symbol));
 
         /// <summary>
         /// Cancel an order, an exception is thrown if error

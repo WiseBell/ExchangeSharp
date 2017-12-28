@@ -302,14 +302,18 @@ namespace ExchangeSharp
             }
         }
 
-        public override Dictionary<string, decimal> GetAmountsAvailableToTrade()
+        public override Dictionary<string, decimal> GetAmounts()
         {
             JToken token = MakeJsonRequest<JToken>("/0/private/Balance", null, new Dictionary<string, object> { { "nonce", DateTime.UtcNow.Ticks } });
             JToken result = CheckError(token);
             Dictionary<string, decimal> balances = new Dictionary<string, decimal>();
             foreach (JProperty prop in result)
             {
-                balances[prop.Name] = (decimal)prop.Value;
+                decimal amount = (decimal)prop.Value;
+                if (amount > 0m)
+                {
+                    balances[prop.Name] = amount;
+                }
             }
             return balances;
         }
@@ -374,6 +378,18 @@ namespace ExchangeSharp
             orderResult.AmountFilled = result["vol_exec"].Value<decimal>();
             orderResult.AveragePrice = result["price"].Value<decimal>();
             return orderResult;
+        }
+
+        public override IEnumerable<ExchangeOrderResult> GetOpenOrderDetails(string symbol = null)
+        {
+            // TODO: Implement
+            return base.GetOpenOrderDetails(symbol);
+        }
+
+        public override IEnumerable<ExchangeOrderResult> GetCompletedOrderDetails(string symbol = null)
+        {
+            // TODO: Implement
+            return base.GetCompletedOrderDetails(symbol);
         }
 
         public override void CancelOrder(string orderId)

@@ -104,6 +104,33 @@ namespace ExchangeSharp
             return order;
         }
 
+        private void ParseOrderFromTrades(List<ExchangeOrderResult> orders, JArray trades, string symbol)
+        {
+            Dictionary<string, ExchangeOrderResult> orderLookup = new Dictionary<string, ExchangeOrderResult>();
+            foreach (JToken token in trades)
+            {
+                // { "globalTradeID": 25129732, "tradeID": "6325758", "date": "2016-04-05 08:08:40", "rate": "0.02565498", "amount": "0.10000000", "total": "0.00256549", "fee": "0.00200000", "orderNumber": "34225313575", "type": "sell", "category": "exchange" }
+                ExchangeOrderResult subOrder = new ExchangeOrderResult();
+                subOrder.Amount = (decimal)token["amount"];
+                subOrder.AmountFilled = subOrder.Amount;
+                subOrder.AveragePrice = (decimal)token["rate"];
+                subOrder.IsBuy = (string)token["type"] != "sell";
+                subOrder.OrderDate = (DateTime)token["date"];
+                subOrder.OrderId = (string)token["orderNumber"];
+                subOrder.Result = ExchangeAPIOrderResult.Filled;
+                subOrder.Symbol = symbol;
+                if (orderLookup.TryGetValue(subOrder.OrderId, out ExchangeOrderResult baseOrder))
+                {
+                    baseOrder.AppendOrderWithOrder(subOrder);
+                }
+                else
+                {
+                    orderLookup[subOrder.OrderId] = subOrder;
+                }
+            }
+            orders.AddRange(orderLookup.Values);
+        }
+
         protected override void ProcessRequest(HttpWebRequest request, Dictionary<string, object> payload)
         {
             if (CanMakeAuthenticatedRequest(payload))
@@ -310,13 +337,32 @@ namespace ExchangeSharp
             }
         }
 
+        public override Dictionary<string, decimal> GetAmounts()
+        {
+            Dictionary<string, decimal> amounts = new Dictionary<string, decimal>();
+            JToken result = MakePrivateAPIRequest("returnCompleteBalances");
+            foreach (JProperty child in result.Children())
+            {
+                decimal amount = (decimal)child.Value["available"];
+                if (amount > 0m)
+                {
+                    amounts[child.Name] = amount;
+                }
+            }
+            return amounts;
+        }
+
         public override Dictionary<string, decimal> GetAmountsAvailableToTrade()
         {
             Dictionary<string, decimal> amounts = new Dictionary<string, decimal>();
             JToken result = MakePrivateAPIRequest("returnBalances");
             foreach (JProperty child in result.Children())
             {
-                amounts[child.Name] = (decimal)child.Value;
+                decimal amount = (decimal)child.Value;
+                if (amount > 0m)
+                {
+                    amounts[child.Name] = amount;
+                }
             }
             return amounts;
         }
@@ -328,24 +374,15 @@ namespace ExchangeSharp
             return ParseOrder(result);
         }
 
-        public override ExchangeOrderResult GetOrderDetails(string orderId)
-        {
-            throw new NotSupportedException("Poloniex does not support getting the details of one order");
-        }
-
         public override IEnumerable<ExchangeOrderResult> GetOpenOrderDetails(string symbol = null)
         {
-            ParseOrder(null);
             symbol = NormalizeSymbol(symbol);
+            if (string.IsNullOrWhiteSpace(symbol))
+            {
+                symbol = "all";
+            }
             JToken result;
-            if (!string.IsNullOrWhiteSpace(symbol))
-            {
-                result = MakePrivateAPIRequest("getOpenOrders", "currencyPair", symbol);
-            }
-            else
-            {
-                result = MakePrivateAPIRequest("getOpenOrders");
-            }
+            result = MakePrivateAPIRequest("getOpenOrders", "currencyPair", symbol);
             CheckError(result);
             if (result is JArray array)
             {
@@ -354,6 +391,32 @@ namespace ExchangeSharp
                     yield return ParseOrder(token);
                 }
             }
+        }
+
+        public override IEnumerable<ExchangeOrderResult> GetCompletedOrderDetails(string symbol = null)
+        {
+            symbol = NormalizeSymbol(symbol);
+            if (string.IsNullOrWhiteSpace(symbol))
+            {
+                symbol = "all";
+            }
+            JToken result;
+            List<ExchangeOrderResult> orders = new List<ExchangeOrderResult>();
+            result = MakePrivateAPIRequest("returnTradeHistory", "currencyPair", symbol, "limit", 10000, "start", (long)DateTime.UtcNow.Subtract(TimeSpan.FromDays(365.0)).UnixTimestampFromDateTimeSeconds());
+            CheckError(result);
+            if (symbol != "all")
+            {
+                ParseOrderFromTrades(orders, result as JArray, symbol);
+            }
+            else
+            {
+                foreach (JProperty prop in result)
+                {
+                    symbol = prop.Name;
+                    ParseOrderFromTrades(orders, prop.Value as JArray, symbol);
+                }
+            }
+            return orders;
         }
 
         public override void CancelOrder(string orderId)
