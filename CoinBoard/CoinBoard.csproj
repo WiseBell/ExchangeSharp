@@ -51,6 +51,12 @@
     <Compile Include="CoinBoardMainForm.Designer.cs">
       <DependentUpon>CoinBoardMainForm.cs</DependentUpon>
     </Compile>
+    <Compile Include="CoinPanel.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="CoinPanel.Designer.cs">
+      <DependentUpon>CoinPanel.cs</DependentUpon>
+    </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <EmbeddedResource Include="CoinBoardMainForm.resx">
